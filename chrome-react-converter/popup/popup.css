@@ -1,0 +1,7 @@
+.container{width:360px; font-family:system-ui, Arial, sans-serif; padding:12px;}
+h1{font-size:16px; margin:0 0 8px;}
+.controls{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px;}
+.controls button{padding:6px 10px;}
+.actions{display:flex; gap:8px; margin:8px 0;}
+.code{max-height:200px; overflow:auto; background:#0b1020; color:#cde; padding:8px; border-radius:6px;}
+ul{max-height:120px; overflow:auto;}

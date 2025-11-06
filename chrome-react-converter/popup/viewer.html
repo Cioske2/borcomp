@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline';" />
+  <title>React Converter – Anteprima</title>
+  <link rel="stylesheet" href="./popup.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Anteprima progetto React</h1>
+    <div class="actions">
+      <button id="btn-copy-app">Copia App.jsx</button>
+      <button id="btn-download">Scarica ZIP</button>
+    </div>
+    <h2>App.jsx</h2>
+    <pre id="preview" class="code"></pre>
+    <h2>Componenti</h2>
+    <ul id="components"></ul>
+    <h2>Codice componente selezionato</h2>
+    <pre id="component-code" class="code"></pre>
+  </div>
+  <script type="module" src="./viewer.js"></script>
+</body>
+</html>
