@@ -1,38 +1,58 @@
 // reactGenerator.js - core code generation logic (simplified)
 import { filterCss } from './cssParser.js';
 import { extractHandlers } from './jsExtractor.js';
+import { robustParse, mergeStyles } from './parseAdapter.js';
+import { analyzeWithPlugins } from './pluginEngine.js';
 
-export function generateReactProject(selection, options={}) {
+export async function generateReactProject(selection, options={}) {
   const { html, cssRules, jsEvents, tree } = selection;
   const css = filterCss(cssRules || []);
   const handlers = extractHandlers(jsEvents || []);
   const inlineMode = options?.cssMode === 'inline';
 
+  // Robust parse (parse5) for edge-case attribute handling. Merge styles from original tree.
+  let parsedTree = null;
+  if (html) {
+    try {
+      parsedTree = await robustParse(html);
+      if (!parsedTree) {
+        // parseAdapter signaled no parser available; fallback to original tree
+        parsedTree = tree;
+      } else if (parsedTree && tree) {
+        parsedTree = mergeStyles(parsedTree, tree);
+      }
+    } catch (err) {
+      console.warn('[reactGenerator] robustParse failed, fallback to provided tree', err);
+      parsedTree = tree;
+    }
+  }
+  const workingTree = parsedTree || tree;
+
   // Post-process selects to defaultValue
-  if (tree) postProcessSelects(tree);
+  if (workingTree) postProcessSelects(workingTree);
 
   // Try to split into high-level sections (Header, SearchBar, LanguageSelector, SocialMedia)
-  const split = tree ? splitIntoSections(tree, handlers) : null;
+  const split = workingTree ? splitIntoSections(workingTree, handlers) : null;
   let components = {};
   let appBody = '';
   if (split && split.order.length) {
     components = split.components;
     appBody = split.order.map(n => `<${n}/>`).join('\n');
     // Layout wrapper detection: if root has multiple major sections, wrap them
-    if (split.order.length >= 2 && tree) {
+    if (split.order.length >= 2 && workingTree) {
       const layoutName = 'Layout';
-      const wrapperClass = (tree.attrs?.class || '').toLowerCase();
+      const wrapperClass = (workingTree.attrs?.class || '').toLowerCase();
       const isLayouty = /container|layout|wrapper|main|content/.test(wrapperClass);
       if (isLayouty) {
         const inner = split.order.map(n => `<${n} />`).join('\n');
-        components[`${layoutName}.jsx`] = wrapAsComponent(layoutName, `<div className=\"${escapeHtml(tree.attrs.class)}\">${inner}</div>`, handlers);
+        components[`${layoutName}.jsx`] = wrapAsComponent(layoutName, `<div className=\"${escapeHtml(workingTree.attrs.class)}\">${inner}</div>`, handlers);
         appBody = `<${layoutName}/>`;
       }
     }
   } else {
     // Always produce a component per selezione se nessuna sezione rilevata
-    const mainName = guessName(tree || { tag: 'Fragment' });
-    const mainJsx = tree ? toJsx(tree, inlineMode) : htmlToJsx(html);
+    const mainName = guessName(workingTree || { tag: 'Fragment' });
+    const mainJsx = workingTree ? toJsx(workingTree, inlineMode) : htmlToJsx(html);
     components = { [`${mainName}.jsx`]: wrapAsComponent(mainName, mainJsx, handlers) };
     appBody = `<${stripExt(`${mainName}.jsx`)}/>`;
   }
@@ -41,12 +61,20 @@ export function generateReactProject(selection, options={}) {
   const index = `import React from 'react';\nimport { createRoot } from 'react-dom/client';\nimport App from './App.jsx';\ncreateRoot(document.getElementById('root')).render(<App/>);`;
   const styles = css.join('\n');
 
+  // Plugin-based recognition suggestions
+  let suggestions = [];
+  try {
+    if (workingTree) suggestions = analyzeWithPlugins(workingTree);
+  } catch (err) {
+    console.warn('[reactGenerator] plugin analysis failed', err);
+  }
+
   return {
     'App.jsx': app,
     'index.js': index,
     'styles.css': styles || '/* no styles extracted */',
     components,
-    meta: { handlers: handlers.map(h=>h.name) }
+    meta: { handlers: handlers.map(h=>h.name), suggestions }
   };
 }
 

@@ -3,6 +3,7 @@ const preview = document.getElementById('preview');
 const componentsList = document.getElementById('components');
 const btnCopyApp = document.getElementById('btn-copy-app');
 const btnDownload = document.getElementById('btn-download');
+const suggestionsList = document.getElementById('suggestions');
 const compCode = document.getElementById('component-code');
 let latestProject = null;
 
@@ -16,6 +17,15 @@ async function loadProject(){
     }
     latestProject = project;
     preview.textContent = project['App.jsx'] || '';
+    // Suggestions
+    suggestionsList.innerHTML = '';
+    const sugg = project?.meta?.suggestions || [];
+    for (const s of sugg){
+      const li = document.createElement('li');
+      const pct = Math.round((s.confidence||0)*100);
+      li.textContent = `[${s.framework}] ${s.component} (${pct}%) — ${s.reason||''}`;
+      suggestionsList.appendChild(li);
+    }
     componentsList.innerHTML = '';
     const comps = project.components || {};
     Object.keys(comps).forEach(name => {

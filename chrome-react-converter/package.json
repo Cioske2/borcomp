@@ -1,0 +1,9 @@
+{
+	"name": "chrome-react-converter",
+	"version": "0.1.0",
+	"type": "module",
+	"description": "Chrome extension that converts selected DOM subtree into modular React components.",
+	"dependencies": {
+		"parse5": "^7.1.2"
+	}
+}

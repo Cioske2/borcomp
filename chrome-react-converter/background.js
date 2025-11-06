@@ -65,7 +65,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 async function buildReactProject(selection, options) {
   // selection: { html, cssRules, jsEvents }
-  const files = generateReactProject(selection, options);
+  const files = await generateReactProject(selection, options);
+  // If suggestions exist, also emit a SUGGESTIONS.md file summarizing them
+  if (files?.meta?.suggestions?.length) {
+    const lines = ['# Component Suggestions', '', 'Riconoscimenti automatici dai plugin (Bootstrap, Tailwind, MUI):', ''];
+    for (const s of files.meta.suggestions) {
+      lines.push(`- [${s.framework}] ${s.component} (confidence: ${Math.round((s.confidence||0)*100)}%) — ${s.reason || ''}`);
+    }
+    files['SUGGESTIONS.md'] = lines.join('\n');
+  }
   return files;
 }
 
@@ -135,11 +143,16 @@ async function createZipAndGetDataUrl(projectFiles) {
   for (const [name, content] of Object.entries(projectFiles)) {
     if (name === 'components') {
       for (const [cName, cContent] of Object.entries(content)) {
-        addOne(`components/${cName}`, cContent);
+        if (typeof cContent === 'string') addOne(`components/${cName}`, cContent);
       }
-    } else {
-      addOne(name, content);
+      continue;
     }
+    if (name === 'meta') continue; // do not include raw meta object
+    if (typeof content !== 'string') {
+      try { addOne(name, JSON.stringify(content, null, 2)); } catch { /* skip */ }
+      continue;
+    }
+    addOne(name, content);
   }
 
   const centralSize = central.reduce((s, b) => s + b.length, 0);
